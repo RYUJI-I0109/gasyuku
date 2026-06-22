@@ -73,7 +73,7 @@ function resolveComment(id: string): void {
   c.resolved = now;
   c.resolvedBy = now ? state.username : null;
   c.resolvedAt = now ? Date.now() : null;
-  render(); applyHighlights(onClickHighlight);
+  render(); renderPins(); applyHighlights(onClickHighlight);
   api('PUT', { id, action: 'resolve', resolved: now, resolvedBy: c.resolvedBy, resolvedAt: c.resolvedAt });
 }
 
@@ -81,13 +81,13 @@ function cyclePriority(id: string): void {
   const c = state.comments.find((x) => x.id === id);
   if (!c || c.author !== state.username) return;
   c.priority = PRIORITY_CYCLE[c.priority] || 'must';
-  render(); applyHighlights(onClickHighlight);
+  render(); renderPins(); applyHighlights(onClickHighlight);
   api('PUT', { id, action: 'cyclePriority', priority: c.priority });
 }
 
 function deleteComment(id: string): void {
   state.comments = state.comments.filter((c) => c.id !== id && c.parentId !== id);
-  render(); applyHighlights(onClickHighlight);
+  render(); renderPins(); applyHighlights(onClickHighlight);
   api('DELETE', { id });
 }
 
@@ -103,7 +103,7 @@ function saveEdit(id: string): void {
   c.content = state.editContent;
   c.priority = state.editPriority;
   state.editingId = null;
-  render(); applyHighlights(onClickHighlight);
+  render(); renderPins(); applyHighlights(onClickHighlight);
   api('PUT', { id, action: 'edit', content: c.content, priority: c.priority });
 }
 
