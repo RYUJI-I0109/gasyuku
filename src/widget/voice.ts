@@ -1,6 +1,6 @@
 import type { Priority } from '../shared/types';
 import { state } from './state';
-import { addPinComment, renderPins, elementToPinCoords } from './pin';
+import { addPin, renderPins, elementToPinCoords } from './pin';
 import { voiceApi } from './api';
 
 interface Section {
@@ -133,7 +133,7 @@ function placePins(
   results.forEach((r) => {
     const sec = sections.find((s) => s.index === r.section_index) || sections[0];
     if (!sec) return;
-    addPinComment(sec.x, sec.y, r.comment, normalizePriority(r.priority));
+    addPin(sec.x, sec.y, r.comment, normalizePriority(r.priority));
   });
   renderPins();
 }

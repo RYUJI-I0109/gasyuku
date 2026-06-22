@@ -100,6 +100,7 @@ export interface SidebarActions {
   toggleSidebar: () => void;
   cyclePriority: (id: string) => void;
   scrollToQuote: (id: string) => void;
+  scrollToPin: (id: string) => void;
   resolveComment: (id: string) => void;
   deleteComment: (id: string) => void;
   deleteReply: (id: string) => void;
@@ -125,6 +126,7 @@ function bindSidebarEvents(sb: HTMLElement, onRender: () => void): void {
       else if (action === 'edit-name') { state.editingName = true; state.nameInput = state.username; onRender(); }
       else if (action === 'cycle' && id) { _actions?.cyclePriority(id); }
       else if (action === 'scroll-quote' && id) { _actions?.scrollToQuote(id); }
+      else if (action === 'scroll-pin' && id) { _actions?.scrollToPin(id); }
       else if (action === 'reply' && id) { state.replyingTo = state.replyingTo === id ? null : id; state.replyText = ''; onRender(); }
       else if (action === 'resolve' && id) { _actions?.resolveComment(id); }
       else if (action === 'edit' && id) { const c = state.comments.find((x) => x.id === id); if (c) { state.editingId = id; state.editContent = c.content; state.editPriority = c.priority; onRender(); } }
@@ -141,7 +143,9 @@ function bindSidebarEvents(sb: HTMLElement, onRender: () => void): void {
 
     const card = (e.target as HTMLElement).closest('.fb-card') as HTMLElement | null;
     if (card && card.dataset.id) {
-      _actions?.scrollToQuote(card.dataset.id);
+      const cm = state.comments.find((x) => x.id === card.dataset.id);
+      if (cm?.type === 'pin') _actions?.scrollToPin(card.dataset.id);
+      else _actions?.scrollToQuote(card.dataset.id);
     }
   });
 

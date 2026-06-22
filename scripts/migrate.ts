@@ -32,6 +32,10 @@ async function migrate() {
     )
   `;
 
+  // ピンコメント用の座標列（既存テーブルにも安全に追加できるよう冪等）
+  await sql`ALTER TABLE comments ADD COLUMN IF NOT EXISTS pin_x DOUBLE PRECISION`;
+  await sql`ALTER TABLE comments ADD COLUMN IF NOT EXISTS pin_y DOUBLE PRECISION`;
+
   await sql`CREATE INDEX IF NOT EXISTS idx_comments_project ON comments (project_slug)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments (parent_id)`;
 

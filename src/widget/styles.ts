@@ -153,6 +153,15 @@ export function injectStyles(): void {
 
     '.fb-pin-marker{position:absolute;transform:translate(-50%,-100%);cursor:pointer;z-index:99990;transition:transform .15s}',
     '.fb-pin-marker:hover{transform:translate(-50%,-100%) scale(1.15)}',
+    // 解決済みピンは淡色表示
+    '.fb-pin-marker.resolved{opacity:.4}',
+    // サイドバーのカードから飛んだとき、マーカーを点滅させる
+    '.fb-pin-marker.fb-pin-flash .fb-pin-icon{animation:fb-pin-ring 1.4s ease}',
+    '@keyframes fb-pin-ring{0%,100%{box-shadow:0 2px 6px rgba(0,0,0,0.25)}30%,60%{box-shadow:0 0 0 8px rgba(59,130,246,0.45)}}',
+    // サイドバーのピンカード内インジケータ
+    '.fb-pin-ref{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fb-muted-fg);padding:6px 10px;background:var(--fb-muted);border-radius:6px;margin-bottom:8px;cursor:pointer;transition:background .15s}',
+    '.fb-pin-ref:hover{background:var(--fb-border)}',
+    '.fb-pin-ref-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;color:#fff;font-size:10px;font-weight:700;flex-shrink:0}',
     // フィードバックモードON中はピンを掴んで移動できることを示す
     'body.fb-pin-mode .fb-pin-marker{cursor:grab}',
     'body.fb-dragging-pin,body.fb-dragging-pin *{cursor:grabbing !important;-webkit-user-select:none !important;user-select:none !important}',

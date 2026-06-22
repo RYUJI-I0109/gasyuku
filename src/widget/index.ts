@@ -18,11 +18,11 @@ import { render, toggleSidebar, setRenderDeps } from './render/index';
 import { setToggleAreaHandler, setToggleVoiceHandler } from './render/toggle';
 import { setSidebarActions } from './render/sidebar';
 import { applyHighlights } from './highlight';
-import { scrollToQuote, scrollToCard } from './scroll';
+import { scrollToQuote, scrollToCard, scrollToPin } from './scroll';
 import { setupTextSelection } from './selection';
 import {
   enterPinMode, exitPinMode,
-  handlePinClick, loadPinComments, renderPins, renderPinPopup, cancelPinPopup,
+  handlePinClick, renderPins, renderPinPopup, cancelPinPopup,
   setupPinDrag,
 } from './pin';
 import { toggleRecording, setVoiceOnChange } from './voice';
@@ -33,9 +33,11 @@ function loadComments(): Promise<void> {
   return api('GET', { slug }).then((c) => {
     if (Array.isArray(c)) state.comments = c;
     render();
+    renderPins(); // ピンも state.comments に含まれるため取得後に描画
     applyHighlights(onClickHighlight);
   }).catch(() => {
     render();
+    renderPins();
     applyHighlights(onClickHighlight);
   });
 }
@@ -167,6 +169,7 @@ setSidebarActions({
   toggleSidebar,
   cyclePriority,
   scrollToQuote,
+  scrollToPin,
   resolveComment,
   deleteComment,
   deleteReply,
@@ -232,9 +235,7 @@ function init(): void {
   setupTextSelection(render, closePopup);
   setupClickAndDrag();
   setupPinDrag(render);
-  loadPinComments();
-  renderPins();
-  loadComments();
+  loadComments(); // 取得後に renderPins も実行される（ピンは state.comments に含まれる）
 }
 
 if (document.readyState === 'loading') {

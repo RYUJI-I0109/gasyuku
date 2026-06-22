@@ -19,6 +19,14 @@ export function scrollToQuote(id: string): void {
   setTimeout(() => { mark.style.backgroundColor = orig; }, 1500);
 }
 
+export function scrollToPin(id: string): void {
+  const marker = document.querySelector('.fb-pin-marker[data-pin-id="' + id + '"]') as HTMLElement | null;
+  if (!marker) return;
+  marker.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  marker.classList.add('fb-pin-flash');
+  setTimeout(() => { marker.classList.remove('fb-pin-flash'); }, 1500);
+}
+
 export function scrollToCard(id: string, toggleSidebar: () => void): void {
   const wasClosed = !state.sidebarOpen;
   if (wasClosed) { toggleSidebar(); }

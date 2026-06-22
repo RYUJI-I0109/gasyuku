@@ -3,6 +3,7 @@ import { fmtTime } from '../../shared/time';
 import { esc } from '../dom';
 import { icon } from '../icons';
 import { state, type FbComment } from '../state';
+import { pinNumber } from '../pin';
 
 export function renderCard(c: FbComment): string {
   const isOwn = c.author === state.username;
@@ -19,7 +20,10 @@ export function renderCard(c: FbComment): string {
   h += '<span class="fb-badge-p' + (isOwn ? ' own' : '') + '" style="background:' + pc.bg + '" data-action="cycle" data-id="' + c.id + '">' + esc(c.priority.charAt(0).toUpperCase() + c.priority.slice(1)) + '</span>';
   h += '</div>';
 
-  if (c.quote) {
+  if (c.type === 'pin') {
+    // ピンは引用の代わりに「📍 #N」インジケータ（クリックで該当ピンへスクロール）
+    h += '<div class="fb-pin-ref" data-action="scroll-pin" data-id="' + c.id + '"><span class="fb-pin-ref-badge" style="background:' + pc.bg + '">' + pinNumber(c.id) + '</span>ピンを表示</div>';
+  } else if (c.quote) {
     const q = c.quote.length > 100 ? c.quote.substring(0, 100) + '...' : c.quote;
     h += '<div class="fb-quote" style="border-left-color:' + pc.bg + '" data-action="scroll-quote" data-id="' + c.id + '">' + esc(q) + '</div>';
   }

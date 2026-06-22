@@ -44,20 +44,20 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   if (!verifyToken(request)) return json({ error: 'Unauthorized' }, 403);
   const body = await request.json();
-  const { id, author, type, quote, quoteContext, content, priority, parentId, pageUrl, projectSlug, timestamp } = body;
+  const { id, author, type, quote, quoteContext, content, priority, parentId, pageUrl, projectSlug, timestamp, pinX, pinY } = body;
 
   if (!id || !author || !projectSlug) return json({ error: 'Missing required fields' }, 400);
 
   const sql = getDb();
   await sql`
-    INSERT INTO comments (id, author, type, quote, quote_context_before, quote_context_after, content, priority, parent_id, page_url, project_slug, timestamp)
-    VALUES (${id}, ${author}, ${type || 'comment'}, ${quote || ''}, ${quoteContext?.beforeText || ''}, ${quoteContext?.afterText || ''}, ${content || ''}, ${priority || 'want'}, ${parentId || null}, ${pageUrl || ''}, ${projectSlug}, ${timestamp || Date.now()})
+    INSERT INTO comments (id, author, type, quote, quote_context_before, quote_context_after, content, priority, parent_id, page_url, project_slug, timestamp, pin_x, pin_y)
+    VALUES (${id}, ${author}, ${type || 'comment'}, ${quote || ''}, ${quoteContext?.beforeText || ''}, ${quoteContext?.afterText || ''}, ${content || ''}, ${priority || 'want'}, ${parentId || null}, ${pageUrl || ''}, ${projectSlug}, ${timestamp || Date.now()}, ${pinX ?? null}, ${pinY ?? null})
   `;
 
   return json({ ok: true });
 }
 
-type PutAction = 'edit' | 'resolve' | 'cyclePriority' | 'rename';
+type PutAction = 'edit' | 'resolve' | 'cyclePriority' | 'rename' | 'move';
 
 export async function PUT(request: NextRequest) {
   if (!verifyToken(request)) return json({ error: 'Unauthorized' }, 403);
@@ -101,6 +101,14 @@ export async function PUT(request: NextRequest) {
       `;
       break;
     }
+    case 'move': {
+      const { pinX, pinY } = body;
+      if (pinX === undefined || pinY === undefined) return json({ error: 'pinX and pinY are required for move' }, 400);
+      await sql`
+        UPDATE comments SET pin_x = ${pinX}, pin_y = ${pinY}, updated_at = ${Date.now()} WHERE id = ${id}
+      `;
+      break;
+    }
     default:
       return json({ error: `Unknown action: ${action}` }, 400);
   }
@@ -138,5 +146,7 @@ function toComment(row: Record<string, unknown>): Comment {
     timestamp: Number(row.timestamp),
     updatedAt: row.updated_at ? Number(row.updated_at) : null,
     pageUrl: (row.page_url as string) || '',
+    pinX: row.pin_x != null ? Number(row.pin_x) : null,
+    pinY: row.pin_y != null ? Number(row.pin_y) : null,
   };
 }

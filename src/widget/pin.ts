@@ -1,13 +1,22 @@
 import type { Priority } from '../shared/types';
-import { PRIORITY_COLORS, PRIORITY_CYCLE } from '../shared/constants';
+import { PRIORITY_COLORS } from '../shared/constants';
 import { generateId } from '../shared/slug';
-import { state, slug, type PinComment } from './state';
+import { state, slug, type FbComment } from './state';
+import { api } from './api';
 import { esc } from './dom';
-
-const PIN_STORAGE_KEY = 'fb-pin-comments-' + slug;
 
 function getContainer(): HTMLElement {
   return document.querySelector('main') || document.body;
+}
+
+/** state.comments の中からピン（type==='pin' のトップレベル）を作成順で返す。 */
+export function getPins(): FbComment[] {
+  return state.comments.filter((c) => c.type === 'pin' && !c.parentId);
+}
+
+/** ピンの通し番号（マーカーとサイドバーカードで一致させる。作成順=配列順）。 */
+export function pinNumber(id: string): number {
+  return getPins().findIndex((p) => p.id === id) + 1;
 }
 
 /**
@@ -23,19 +32,6 @@ export function elementToPinCoords(target: Element): { x: number; y: number } {
   if (xPct > 95) xPct = 95;
   const yPx = eRect.top - cRect.top; // スクロールに依存しないコンテナ内オフセット
   return { x: xPct, y: yPx };
-}
-
-export function loadPinComments(): void {
-  try {
-    const raw = localStorage.getItem(PIN_STORAGE_KEY);
-    state.pinComments = raw ? JSON.parse(raw) : [];
-  } catch {
-    state.pinComments = [];
-  }
-}
-
-function savePinComments(): void {
-  localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(state.pinComments));
 }
 
 export function enterPinMode(): void {
@@ -57,8 +53,6 @@ export function handlePinClick(e: MouseEvent): void {
   const containerRect = container.getBoundingClientRect();
 
   const relX = e.clientX - containerRect.left;
-  const relY = e.clientY - containerRect.top + container.scrollTop;
-
   const xPct = (relX / containerRect.width) * 100;
   const yPx = e.pageY - (containerRect.top + window.scrollY);
 
@@ -67,28 +61,38 @@ export function handlePinClick(e: MouseEvent): void {
 }
 
 /**
- * ピンコメントを1件追加する汎用関数。
- * 手動クリック（submitPinComment）からも、音声解析（voice.ts）からも呼ばれる。
- * 描画はまとめて行いたいケースがあるため、ここでは render しない（呼び出し側で renderPins）。
+ * ピンを1件追加する汎用関数（手動クリック・音声解析の両方から呼ばれる）。
+ * type='pin' のコメントとして state.comments に積み、DB に保存する。
+ * 描画はまとめたいことがあるため、ここでは renderPins しない（呼び出し側で行う）。
  */
-export function addPinComment(x: number, y: number, content: string, priority: Priority): PinComment {
-  const comment: PinComment = {
+export function addPin(x: number, y: number, content: string, priority: Priority): FbComment {
+  const c: FbComment = {
     id: generateId(),
-    x,
-    y,
+    author: state.username || '匿名',
+    type: 'pin',
+    quote: '',
+    quoteContext: { beforeText: '', afterText: '' },
     content: content.trim() || '(コメントなし)',
     priority,
-    author: state.username || '匿名',
+    parentId: null,
+    pageUrl: window.location.href,
+    projectSlug: slug,
     timestamp: Date.now(),
+    resolved: false,
+    resolvedBy: null,
+    resolvedAt: null,
+    updatedAt: null,
+    pinX: x,
+    pinY: y,
   };
-  state.pinComments.push(comment);
-  savePinComments();
-  return comment;
+  state.comments.push(c);
+  api('POST', c as unknown as Record<string, unknown>);
+  return c;
 }
 
 export function submitPinComment(content: string, priority: Priority): void {
   if (!state.pinPopupPos) return;
-  addPinComment(state.pinPopupPos.x, state.pinPopupPos.y, content, priority);
+  addPin(state.pinPopupPos.x, state.pinPopupPos.y, content, priority);
   state.pinPopupPos = null;
   renderPins();
 }
@@ -97,53 +101,45 @@ export function cancelPinPopup(): void {
   state.pinPopupPos = null;
 }
 
-export function deletePinComment(id: string): void {
-  state.pinComments = state.pinComments.filter((c) => c.id !== id);
-  savePinComments();
+/** ピン（と返信）を削除。DBにも反映。 */
+export function deletePin(id: string): void {
+  state.comments = state.comments.filter((c) => c.id !== id && c.parentId !== id);
+  api('DELETE', { id });
   renderPins();
 }
 
-/** ピンの位置を更新する（ドラッグ移動で使用）。全ピン共通。 */
-export function movePinComment(id: string, x: number, y: number): void {
-  const c = state.pinComments.find((p) => p.id === id);
+/** ピンの位置を更新（ドラッグ移動）。DBにも反映。 */
+export function movePin(id: string, x: number, y: number): void {
+  const c = state.comments.find((p) => p.id === id);
   if (!c) return;
-  c.x = x;
-  c.y = y;
-  savePinComments();
+  c.pinX = x;
+  c.pinY = y;
+  api('PUT', { id, action: 'move', pinX: x, pinY: y });
   renderPins();
 }
 
-/** ピンの優先度を must→better→want で循環する（既存コメントの cyclePriority と同じ挙動）。 */
-export function cyclePinPriority(id: string): void {
-  const c = state.pinComments.find((p) => p.id === id);
-  if (!c) return;
-  c.priority = PRIORITY_CYCLE[c.priority] || 'must';
-  savePinComments();
-  renderPins();
-}
-
-/** ピンの本文・優先度を更新する（編集ポップアップの「保存」で使用）。 */
-export function updatePinComment(id: string, content: string, priority: Priority): void {
-  const c = state.pinComments.find((p) => p.id === id);
+/** ピンの本文・優先度を更新（編集ポップアップの保存）。DBにも反映。 */
+export function updatePin(id: string, content: string, priority: Priority): void {
+  const c = state.comments.find((p) => p.id === id);
   if (!c) return;
   c.content = content.trim() || '(コメントなし)';
   c.priority = priority;
-  savePinComments();
+  api('PUT', { id, action: 'edit', content: c.content, priority });
   renderPins();
 }
 
 /** ピンをクリックしたとき、その場に編集ポップアップ（本文・優先度・削除）を開く。 */
 export function openPinEditor(id: string, onRender: () => void): void {
-  const c = state.pinComments.find((p) => p.id === id);
+  const c = getPins().find((p) => p.id === id);
   if (!c) return;
   state.editingPinId = id;
-  state.pinPopupPos = { x: c.x, y: c.y };
+  state.pinPopupPos = { x: c.pinX ?? 50, y: c.pinY ?? 0 };
   renderPinPopup(onRender);
 }
 
 /**
  * ピンのドラッグ移動をセットアップする（委譲方式）。
- * sidebar のリサイズハンドル実装（render/sidebar.ts）と同じ mousedown→mousemove→mouseup パターン。
+ * sidebar のリサイズハンドル実装と同じ mousedown→mousemove→mouseup パターン。
  * フィードバックモード(state.pinMode) が OFF の間はドラッグ開始しない（閲覧専用）。
  */
 export function setupPinDrag(onRender: () => void): void {
@@ -168,7 +164,6 @@ export function setupPinDrag(onRender: () => void): void {
       ev.preventDefault();
       const container = getContainer();
       const cRect = container.getBoundingClientRect();
-      // tip がカーソルに追従するようライブ更新（renderPins と同じ left%/top px 基準）
       let xPct = ((ev.clientX - cRect.left) / cRect.width) * 100;
       if (xPct < 5) xPct = 5;
       if (xPct > 95) xPct = 95;
@@ -180,8 +175,7 @@ export function setupPinDrag(onRender: () => void): void {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       if (!moved) {
-        // 動かさずに離した = クリック → 編集ポップアップを開く
-        openPinEditor(id!, onRender);
+        openPinEditor(id!, onRender); // 動かさずに離した = クリック → 編集
         return;
       }
       document.body.classList.remove('fb-dragging-pin');
@@ -191,7 +185,7 @@ export function setupPinDrag(onRender: () => void): void {
       if (xPct < 5) xPct = 5;
       if (xPct > 95) xPct = 95;
       const yPx = ev.clientY - cRect.top;
-      movePinComment(id!, xPct, yPx);
+      movePin(id!, xPct, yPx);
     }
 
     document.addEventListener('mousemove', onMove);
@@ -207,19 +201,19 @@ export function renderPins(): void {
     container.style.position = 'relative';
   }
 
-  state.pinComments.forEach((comment, idx) => {
+  getPins().forEach((comment, idx) => {
     const pin = document.createElement('div');
-    pin.className = 'fb-pin-marker';
+    pin.className = 'fb-pin-marker' + (comment.resolved ? ' resolved' : '');
     pin.dataset.pinId = comment.id;
 
     const pc = PRIORITY_COLORS[comment.priority] || PRIORITY_COLORS.want;
-    pin.style.left = comment.x + '%';
-    pin.style.top = comment.y + 'px';
+    pin.style.left = (comment.pinX ?? 50) + '%';
+    pin.style.top = (comment.pinY ?? 0) + 'px';
     pin.style.setProperty('--pin-color', pc.bg);
 
     pin.innerHTML = '<div class="fb-pin-icon" style="background:' + pc.bg + '">' + (idx + 1) + '</div>';
 
-    // ホバー吹き出しは「内容の確認専用」。編集・削除・優先度変更はピンをクリックして開く編集ポップアップで行う。
+    // ホバー吹き出しは「内容の確認専用」。編集・削除・優先度はピンをクリックして開く編集ポップアップで。
     const tooltip = document.createElement('div');
     tooltip.className = 'fb-pin-tooltip';
     const priLabel = comment.priority.charAt(0).toUpperCase() + comment.priority.slice(1);
@@ -252,7 +246,7 @@ export function renderPinPopup(onRender: () => void): void {
 
   // 編集対象ピン（あれば編集モード、なければ新規追加モード）
   const editing = state.editingPinId
-    ? state.pinComments.find((p) => p.id === state.editingPinId) || null
+    ? getPins().find((p) => p.id === state.editingPinId) || null
     : null;
 
   const container = getContainer();
@@ -295,7 +289,6 @@ export function renderPinPopup(onRender: () => void): void {
   textarea.value = editing ? editing.content : '';
   setTimeout(() => textarea?.focus(), 50);
 
-  // 優先度ボタン（編集時は現在の優先度を選択状態に）
   const priBtns = popup.querySelectorAll('.fb-pin-pri-btn');
   let selectedPri: Priority = editing ? editing.priority : 'better';
   const paintPri = () => priBtns.forEach((b) => {
@@ -318,7 +311,7 @@ export function renderPinPopup(onRender: () => void): void {
 
   const commit = () => {
     if (editing) {
-      updatePinComment(editing.id, textarea.value, selectedPri);
+      updatePin(editing.id, textarea.value, selectedPri);
     } else {
       submitPinComment(textarea.value, selectedPri);
     }
@@ -327,7 +320,7 @@ export function renderPinPopup(onRender: () => void): void {
 
   if (editing) {
     popup.querySelector('.fb-pin-delete-btn')!.addEventListener('click', () => {
-      deletePinComment(editing.id);
+      deletePin(editing.id);
       close();
     });
   } else {

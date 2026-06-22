@@ -1,6 +1,6 @@
 export type Priority = 'must' | 'better' | 'want';
 
-export type CommentType = 'comment' | 'strikethrough';
+export type CommentType = 'comment' | 'strikethrough' | 'pin';
 
 export interface Comment {
   id: string;
@@ -17,6 +17,8 @@ export interface Comment {
   timestamp: number;
   updatedAt: number | null;
   pageUrl: string;
+  pinX: number | null;  // type==='pin' のときコンテナ幅に対する%
+  pinY: number | null;  // type==='pin' のときコンテナ上端からのpx
 }
 
 export type FilterMode = 'unresolved' | 'resolved' | 'all';

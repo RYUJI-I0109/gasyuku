@@ -7,20 +7,10 @@ export interface QuoteContext {
   afterText: string;
 }
 
-export interface PinComment {
-  id: string;
-  x: number;  // コンテナ左端からの%
-  y: number;  // コンテナ上端からのpx（スクロール込み絶対位置）
-  content: string;
-  priority: Priority;
-  author: string;
-  timestamp: number;
-}
-
 export interface FbComment {
   id: string;
   author: string;
-  type: string;
+  type: string;  // 'comment' | 'pin' など
   quote: string;
   quoteContext: QuoteContext;
   content: string;
@@ -33,6 +23,8 @@ export interface FbComment {
   updatedAt: number | null;
   pageUrl: string;
   projectSlug?: string;
+  pinX?: number | null;  // type==='pin' のときコンテナ幅に対する%
+  pinY?: number | null;  // type==='pin' のときコンテナ上端からのpx
 }
 
 export interface WidgetState {
@@ -54,7 +46,6 @@ export interface WidgetState {
   popupPriority: Priority;
   sidebarWidth: number;
   pinMode: boolean;
-  pinComments: PinComment[];
   pinPopupPos: { x: number; y: number } | null;  // クリック位置（%,px）
   editingPinId: string | null;  // 編集中ピンのID（null=新規ピン追加）
   voiceRecording: boolean;   // 録音中
@@ -81,7 +72,6 @@ export const state: WidgetState = {
   popupPriority: 'must',
   sidebarWidth: parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY) || '', 10) || 400,
   pinMode: false,
-  pinComments: [],
   pinPopupPos: null,
   editingPinId: null,
   voiceRecording: false,

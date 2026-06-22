@@ -30,7 +30,7 @@ export function renderToggle(toggleSidebar: () => void): void {
     document.body.appendChild(btn);
   }
   const unresolvedCount = state.comments.filter((c) => !c.parentId && !c.resolved).length;
-  const pinCount = state.pinComments.length;
+  const pinCount = state.comments.filter((c) => c.type === 'pin' && !c.parentId).length;
   let h = '<span class="fb-toggle-icon">' + icon('panelRight', 16);
   if (unresolvedCount > 0) h += '<span class="fb-badge">' + unresolvedCount + '</span>';
   h += '</span>';
