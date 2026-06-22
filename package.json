@@ -1,0 +1,35 @@
+{
+  "name": "commenting-visual-explainers",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build:widget": "esbuild src/widget/index.ts --bundle --format=iife --outfile=public/widget.js --minify",
+    "dev:widget": "esbuild src/widget/index.ts --bundle --format=iife --outfile=public/widget.js --watch",
+    "db:migrate": "npx tsx scripts/migrate.ts"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^28.0.1",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^17.3.1",
+    "esbuild": "^0.27.4",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "jsdom": "^27.0.1",
+    "typescript": "5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
