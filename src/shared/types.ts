@@ -17,8 +17,11 @@ export interface Comment {
   timestamp: number;
   updatedAt: number | null;
   pageUrl: string;
-  pinX: number | null;  // type==='pin' のときコンテナ幅に対する%
-  pinY: number | null;  // type==='pin' のときコンテナ上端からのpx
+  pinX: number | null;  // type==='pin' のときコンテナ幅に対する%（フォールバック）
+  pinY: number | null;  // type==='pin' のときコンテナ上端からのpx（フォールバック）
+  anchorSelector: string | null;  // 追従の基準にする最寄り要素の CSS セレクタ
+  anchorDx: number | null;  // 基準要素の左上からの相対px（横）
+  anchorDy: number | null;  // 基準要素の左上からの相対px（縦）
 }
 
 export type FilterMode = 'unresolved' | 'resolved' | 'all';

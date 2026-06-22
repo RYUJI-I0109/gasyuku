@@ -44,14 +44,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   if (!verifyToken(request)) return json({ error: 'Unauthorized' }, 403);
   const body = await request.json();
-  const { id, author, type, quote, quoteContext, content, priority, parentId, pageUrl, projectSlug, timestamp, pinX, pinY } = body;
+  const { id, author, type, quote, quoteContext, content, priority, parentId, pageUrl, projectSlug, timestamp, pinX, pinY, anchorSelector, anchorDx, anchorDy } = body;
 
   if (!id || !author || !projectSlug) return json({ error: 'Missing required fields' }, 400);
 
   const sql = getDb();
   await sql`
-    INSERT INTO comments (id, author, type, quote, quote_context_before, quote_context_after, content, priority, parent_id, page_url, project_slug, timestamp, pin_x, pin_y)
-    VALUES (${id}, ${author}, ${type || 'comment'}, ${quote || ''}, ${quoteContext?.beforeText || ''}, ${quoteContext?.afterText || ''}, ${content || ''}, ${priority || 'want'}, ${parentId || null}, ${pageUrl || ''}, ${projectSlug}, ${timestamp || Date.now()}, ${pinX ?? null}, ${pinY ?? null})
+    INSERT INTO comments (id, author, type, quote, quote_context_before, quote_context_after, content, priority, parent_id, page_url, project_slug, timestamp, pin_x, pin_y, anchor_selector, anchor_dx, anchor_dy)
+    VALUES (${id}, ${author}, ${type || 'comment'}, ${quote || ''}, ${quoteContext?.beforeText || ''}, ${quoteContext?.afterText || ''}, ${content || ''}, ${priority || 'want'}, ${parentId || null}, ${pageUrl || ''}, ${projectSlug}, ${timestamp || Date.now()}, ${pinX ?? null}, ${pinY ?? null}, ${anchorSelector ?? null}, ${anchorDx ?? null}, ${anchorDy ?? null})
   `;
 
   return json({ ok: true });
@@ -102,10 +102,10 @@ export async function PUT(request: NextRequest) {
       break;
     }
     case 'move': {
-      const { pinX, pinY } = body;
+      const { pinX, pinY, anchorSelector, anchorDx, anchorDy } = body;
       if (pinX === undefined || pinY === undefined) return json({ error: 'pinX and pinY are required for move' }, 400);
       await sql`
-        UPDATE comments SET pin_x = ${pinX}, pin_y = ${pinY}, updated_at = ${Date.now()} WHERE id = ${id}
+        UPDATE comments SET pin_x = ${pinX}, pin_y = ${pinY}, anchor_selector = ${anchorSelector ?? null}, anchor_dx = ${anchorDx ?? null}, anchor_dy = ${anchorDy ?? null}, updated_at = ${Date.now()} WHERE id = ${id}
       `;
       break;
     }
@@ -148,5 +148,8 @@ function toComment(row: Record<string, unknown>): Comment {
     pageUrl: (row.page_url as string) || '',
     pinX: row.pin_x != null ? Number(row.pin_x) : null,
     pinY: row.pin_y != null ? Number(row.pin_y) : null,
+    anchorSelector: (row.anchor_selector as string) || null,
+    anchorDx: row.anchor_dx != null ? Number(row.anchor_dx) : null,
+    anchorDy: row.anchor_dy != null ? Number(row.anchor_dy) : null,
   };
 }

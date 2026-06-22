@@ -1,6 +1,6 @@
 import type { Priority } from '../shared/types';
 import { state } from './state';
-import { addPin, renderPins, elementToPinCoords } from './pin';
+import { addPin, renderPins, elementToPinCoords, anchorFromElement, type PinAnchor } from './pin';
 import { voiceApi } from './api';
 
 interface Section {
@@ -8,6 +8,7 @@ interface Section {
   title: string;
   x: number; // ピン座標系（%）
   y: number; // ピン座標系（px）
+  anchor: PinAnchor; // 見出し要素アンカー（レスポンシブ追従）
 }
 
 let mediaRecorder: MediaRecorder | null = null;
@@ -36,7 +37,7 @@ export function extractSections(): Section[] {
     const title = (node.textContent || '').trim();
     if (!title) return;
     const { x, y } = elementToPinCoords(node);
-    sections.push({ index: sections.length, title, x, y });
+    sections.push({ index: sections.length, title, x, y, anchor: anchorFromElement(node) });
   });
   return sections;
 }
@@ -133,7 +134,7 @@ function placePins(
   results.forEach((r) => {
     const sec = sections.find((s) => s.index === r.section_index) || sections[0];
     if (!sec) return;
-    addPin(sec.x, sec.y, r.comment, normalizePriority(r.priority));
+    addPin(sec.x, sec.y, r.comment, normalizePriority(r.priority), sec.anchor);
   });
   renderPins();
 }
