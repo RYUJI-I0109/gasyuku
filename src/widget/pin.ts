@@ -201,13 +201,32 @@ export function renderPins(): void {
     container.style.position = 'relative';
   }
 
-  getPins().forEach((comment, idx) => {
+  // 近接ピンをクラスタ化し、重なって見えないよう横に扇状オフセットする（データは変更しない）。
+  const pins = getPins();
+  const FAN_STEP = 26; // px
+  const clusters: { x: number; y: number; items: number[] }[] = [];
+  pins.forEach((p, i) => {
+    const px = p.pinX ?? 50;
+    const py = p.pinY ?? 0;
+    let cl = clusters.find((c) => Math.abs(c.x - px) < 2 && Math.abs(c.y - py) < 24);
+    if (!cl) { cl = { x: px, y: py, items: [] }; clusters.push(cl); }
+    cl.items.push(i);
+  });
+  const fanOffset: Record<number, number> = {};
+  clusters.forEach((c) => {
+    const n = c.items.length;
+    c.items.forEach((idx, k) => { fanOffset[idx] = (k - (n - 1) / 2) * FAN_STEP; });
+  });
+
+  pins.forEach((comment, idx) => {
     const pin = document.createElement('div');
     pin.className = 'fb-pin-marker' + (comment.resolved ? ' resolved' : '');
     pin.dataset.pinId = comment.id;
 
     const pc = PRIORITY_COLORS[comment.priority] || PRIORITY_COLORS.want;
-    pin.style.left = (comment.pinX ?? 50) + '%';
+    const off = fanOffset[idx] || 0;
+    // 横オフセットは calc で left に加算（transform は維持されるのでホバー拡大も効く）
+    pin.style.left = off ? 'calc(' + (comment.pinX ?? 50) + '% + ' + off + 'px)' : (comment.pinX ?? 50) + '%';
     pin.style.top = (comment.pinY ?? 0) + 'px';
     pin.style.setProperty('--pin-color', pc.bg);
 
