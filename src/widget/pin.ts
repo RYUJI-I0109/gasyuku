@@ -349,22 +349,17 @@ export function renderPinPopup(onRender: () => void): void {
   const absY = state.pinPopupPos.y + containerRect.top + window.scrollY;
 
   let h = '<div class="fb-pin-popup-head">' + (editing ? 'コメントを編集' : 'コメントを追加') + '</div>';
-  h += '<textarea id="fb-pin-textarea" placeholder="コメントを入力...（Cmd+Enter で' + (editing ? '保存' : '送信') + '）"></textarea>';
+  h += '<textarea id="fb-pin-textarea" placeholder="コメントを入力...（優先度を押すと' + (editing ? '保存' : '送信') + '）"></textarea>';
   h += '<div class="fb-pin-popup-pri">';
   (['must', 'better', 'want'] as const).forEach((p) => {
     const pc = PRIORITY_COLORS[p];
-    h += '<button class="fb-pin-pri-btn" data-pri="' + p + '" style="background:' + pc.bg + ';color:#fff">' + p.charAt(0).toUpperCase() + p.slice(1) + '</button>';
+    h += '<button class="fb-pin-pri-btn" data-pri="' + p + '" style="background:' + pc.bg + ';color:#fff;border:none">' + p.charAt(0).toUpperCase() + p.slice(1) + '</button>';
   });
   h += '</div>';
-  h += '<div class="fb-pin-popup-actions">';
+  // 送信/キャンセルは撤去（優先度ボタンで送信、ESC/外側クリックでキャンセル）。編集時のみ削除ボタンを残す。
   if (editing) {
-    h += '<button class="fb-pin-delete-btn">削除</button>';
-    h += '<button class="fb-pin-submit">保存</button>';
-  } else {
-    h += '<button class="fb-pin-cancel">キャンセル</button>';
-    h += '<button class="fb-pin-submit">送信</button>';
+    h += '<div class="fb-pin-popup-actions"><button class="fb-pin-delete-btn">削除</button></div>';
   }
-  h += '</div>';
 
   popup.innerHTML = h;
 
@@ -417,14 +412,7 @@ export function renderPinPopup(onRender: () => void): void {
       deletePin(editing.id);
       close();
     });
-  } else {
-    popup.querySelector('.fb-pin-cancel')!.addEventListener('click', () => {
-      cancelPinPopup();
-      close();
-    });
   }
-
-  popup.querySelector('.fb-pin-submit')!.addEventListener('click', commit);
 
   textarea.addEventListener('keydown', (ev) => {
     if ((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter') commit();
