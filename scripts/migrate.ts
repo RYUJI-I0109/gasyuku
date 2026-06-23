@@ -36,6 +36,11 @@ async function migrate() {
   await sql`ALTER TABLE comments ADD COLUMN IF NOT EXISTS pin_x DOUBLE PRECISION`;
   await sql`ALTER TABLE comments ADD COLUMN IF NOT EXISTS pin_y DOUBLE PRECISION`;
 
+  // 要素アンカー方式（レスポンシブ追従）: 最寄り要素のセレクタ＋その要素からの相対オフセット
+  await sql`ALTER TABLE comments ADD COLUMN IF NOT EXISTS anchor_selector TEXT`;
+  await sql`ALTER TABLE comments ADD COLUMN IF NOT EXISTS anchor_dx DOUBLE PRECISION`;
+  await sql`ALTER TABLE comments ADD COLUMN IF NOT EXISTS anchor_dy DOUBLE PRECISION`;
+
   await sql`CREATE INDEX IF NOT EXISTS idx_comments_project ON comments (project_slug)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments (parent_id)`;
 

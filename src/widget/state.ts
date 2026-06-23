@@ -23,8 +23,11 @@ export interface FbComment {
   updatedAt: number | null;
   pageUrl: string;
   projectSlug?: string;
-  pinX?: number | null;  // type==='pin' のときコンテナ幅に対する%
-  pinY?: number | null;  // type==='pin' のときコンテナ上端からのpx
+  pinX?: number | null;  // type==='pin' のときコンテナ幅に対する%（フォールバック）
+  pinY?: number | null;  // type==='pin' のときコンテナ上端からのpx（フォールバック）
+  anchorSelector?: string | null;  // 追従基準の最寄り要素セレクタ
+  anchorDx?: number | null;  // 基準要素左上からの相対px（横）
+  anchorDy?: number | null;  // 基準要素左上からの相対px（縦）
 }
 
 export interface WidgetState {

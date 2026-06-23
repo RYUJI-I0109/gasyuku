@@ -229,12 +229,22 @@ function setupClickAndDrag(): void {
   });
 }
 
+let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+function setupPinReposition(): void {
+  // 画面幅が変わるとアンカー基準位置も変わるため、ピンを再配置する（追従）
+  window.addEventListener('resize', () => {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { renderPins(); }, 100);
+  });
+}
+
 function init(): void {
   injectStyles();
   render();
   setupTextSelection(render, closePopup);
   setupClickAndDrag();
   setupPinDrag(render);
+  setupPinReposition();
   loadComments(); // 取得後に renderPins も実行される（ピンは state.comments に含まれる）
 }
 

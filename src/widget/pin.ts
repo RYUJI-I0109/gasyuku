@@ -9,6 +9,69 @@ function getContainer(): HTMLElement {
   return document.querySelector('main') || document.body;
 }
 
+export interface PinAnchor { selector: string; dx: number; dy: number; }
+
+// 新規ピン配置時に handlePinClick が捕捉したアンカーを submit まで一時保持する
+let pendingAnchor: PinAnchor | null = null;
+
+/** 要素から、document.querySelector で再取得できる安定的な CSS パスを生成する。 */
+function cssPath(el: Element): string {
+  const esc = (s: string) => (window.CSS && CSS.escape ? CSS.escape(s) : s);
+  const parts: string[] = [];
+  let node: Element | null = el;
+  while (node && node.nodeType === 1 && node !== document.body) {
+    if ((node as HTMLElement).id) { parts.unshift('#' + esc((node as HTMLElement).id)); break; }
+    let sel = node.tagName.toLowerCase();
+    const parent: Element | null = node.parentElement;
+    if (parent) {
+      const sib = Array.from(parent.children).filter((c) => c.tagName === node!.tagName);
+      if (sib.length > 1) sel += ':nth-of-type(' + (sib.indexOf(node) + 1) + ')';
+    }
+    parts.unshift(sel);
+    node = parent;
+  }
+  return parts.join('>');
+}
+
+/** 画面座標(clientX,clientY)の直下にある「コンテナ内の要素」をアンカーとして捕捉する。 */
+function captureAnchorAtPoint(clientX: number, clientY: number): PinAnchor | null {
+  const container = getContainer();
+  const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+  if (!el) return null;
+  if (el.closest('#fb-sidebar,#fb-toggle,#fb-pin-popup,.fb-pin-marker,.fb-pin-tooltip')) return null;
+  if (el === container || el === document.body || !container.contains(el)) return null;
+  const eRect = el.getBoundingClientRect();
+  return { selector: cssPath(el), dx: clientX - eRect.left, dy: clientY - eRect.top };
+}
+
+/** 要素そのものをアンカーにする（音声ピン：見出し要素の左上に配置）。 */
+export function anchorFromElement(el: Element): PinAnchor {
+  return { selector: cssPath(el), dx: 0, dy: 0 };
+}
+
+/**
+ * ピンの表示座標を解決する。
+ * anchorSelector があり要素が見つかれば「要素位置 + 相対オフセット」で再計算（レスポンシブ追従）。
+ * 見つからなければ保存済みの pinX%/pinY px にフォールバック。
+ */
+function resolvePinPosition(c: { pinX?: number | null; pinY?: number | null; anchorSelector?: string | null; anchorDx?: number | null; anchorDy?: number | null; }): { xPct: number; yPx: number } {
+  const container = getContainer();
+  const cRect = container.getBoundingClientRect();
+  if (c.anchorSelector) {
+    let el: Element | null = null;
+    try { el = document.querySelector(c.anchorSelector); } catch { el = null; }
+    if (el) {
+      const eRect = el.getBoundingClientRect();
+      let xPct = (((eRect.left - cRect.left) + (c.anchorDx ?? 0)) / cRect.width) * 100;
+      if (xPct < 5) xPct = 5;
+      if (xPct > 95) xPct = 95;
+      const yPx = (eRect.top - cRect.top) + (c.anchorDy ?? 0);
+      return { xPct, yPx };
+    }
+  }
+  return { xPct: c.pinX ?? 50, yPx: c.pinY ?? 0 };
+}
+
 /** state.comments の中からピン（type==='pin' のトップレベル）を作成順で返す。 */
 export function getPins(): FbComment[] {
   return state.comments.filter((c) => c.type === 'pin' && !c.parentId);
@@ -58,6 +121,7 @@ export function handlePinClick(e: MouseEvent): void {
 
   state.editingPinId = null; // 新規ピン追加（編集モードを解除）
   state.pinPopupPos = { x: xPct, y: yPx };
+  pendingAnchor = captureAnchorAtPoint(e.clientX, e.clientY); // 最寄り要素を追従基準に
 }
 
 /**
@@ -65,7 +129,7 @@ export function handlePinClick(e: MouseEvent): void {
  * type='pin' のコメントとして state.comments に積み、DB に保存する。
  * 描画はまとめたいことがあるため、ここでは renderPins しない（呼び出し側で行う）。
  */
-export function addPin(x: number, y: number, content: string, priority: Priority): FbComment {
+export function addPin(x: number, y: number, content: string, priority: Priority, anchor?: PinAnchor | null): FbComment {
   const c: FbComment = {
     id: generateId(),
     author: state.username || '匿名',
@@ -84,6 +148,9 @@ export function addPin(x: number, y: number, content: string, priority: Priority
     updatedAt: null,
     pinX: x,
     pinY: y,
+    anchorSelector: anchor?.selector ?? null,
+    anchorDx: anchor?.dx ?? null,
+    anchorDy: anchor?.dy ?? null,
   };
   state.comments.push(c);
   api('POST', c as unknown as Record<string, unknown>);
@@ -92,7 +159,8 @@ export function addPin(x: number, y: number, content: string, priority: Priority
 
 export function submitPinComment(content: string, priority: Priority): void {
   if (!state.pinPopupPos) return;
-  addPin(state.pinPopupPos.x, state.pinPopupPos.y, content, priority);
+  addPin(state.pinPopupPos.x, state.pinPopupPos.y, content, priority, pendingAnchor);
+  pendingAnchor = null;
   state.pinPopupPos = null;
   renderPins();
 }
@@ -108,13 +176,16 @@ export function deletePin(id: string): void {
   renderPins();
 }
 
-/** ピンの位置を更新（ドラッグ移動）。DBにも反映。 */
-export function movePin(id: string, x: number, y: number): void {
+/** ピンの位置を更新（ドラッグ移動）。アンカーも取り直して DB に反映。 */
+export function movePin(id: string, x: number, y: number, anchor?: PinAnchor | null): void {
   const c = state.comments.find((p) => p.id === id);
   if (!c) return;
   c.pinX = x;
   c.pinY = y;
-  api('PUT', { id, action: 'move', pinX: x, pinY: y });
+  c.anchorSelector = anchor?.selector ?? null;
+  c.anchorDx = anchor?.dx ?? null;
+  c.anchorDy = anchor?.dy ?? null;
+  api('PUT', { id, action: 'move', pinX: x, pinY: y, anchorSelector: c.anchorSelector, anchorDx: c.anchorDx, anchorDy: c.anchorDy });
   renderPins();
 }
 
@@ -133,7 +204,8 @@ export function openPinEditor(id: string, onRender: () => void): void {
   const c = getPins().find((p) => p.id === id);
   if (!c) return;
   state.editingPinId = id;
-  state.pinPopupPos = { x: c.pinX ?? 50, y: c.pinY ?? 0 };
+  const pos = resolvePinPosition(c); // アンカーで再計算した現在位置にポップアップを出す
+  state.pinPopupPos = { x: pos.xPct, y: pos.yPx };
   renderPinPopup(onRender);
 }
 
@@ -185,7 +257,8 @@ export function setupPinDrag(onRender: () => void): void {
       if (xPct < 5) xPct = 5;
       if (xPct > 95) xPct = 95;
       const yPx = ev.clientY - cRect.top;
-      movePin(id!, xPct, yPx);
+      const anchor = captureAnchorAtPoint(ev.clientX, ev.clientY); // 落とした先の最寄り要素を新基準に
+      movePin(id!, xPct, yPx, anchor);
     }
 
     document.addEventListener('mousemove', onMove);
@@ -201,15 +274,16 @@ export function renderPins(): void {
     container.style.position = 'relative';
   }
 
-  // 近接ピンをクラスタ化し、重なって見えないよう横に扇状オフセットする（データは変更しない）。
+  // まず各ピンの表示座標を解決（アンカー追従。無ければ pinX/pinY フォールバック）
   const pins = getPins();
+  const pos = pins.map((p) => resolvePinPosition(p));
+
+  // 近接ピンをクラスタ化し、重なって見えないよう横に扇状オフセットする（データは変更しない）。
   const FAN_STEP = 26; // px
   const clusters: { x: number; y: number; items: number[] }[] = [];
-  pins.forEach((p, i) => {
-    const px = p.pinX ?? 50;
-    const py = p.pinY ?? 0;
-    let cl = clusters.find((c) => Math.abs(c.x - px) < 2 && Math.abs(c.y - py) < 24);
-    if (!cl) { cl = { x: px, y: py, items: [] }; clusters.push(cl); }
+  pos.forEach((p, i) => {
+    let cl = clusters.find((c) => Math.abs(c.x - p.xPct) < 2 && Math.abs(c.y - p.yPx) < 24);
+    if (!cl) { cl = { x: p.xPct, y: p.yPx, items: [] }; clusters.push(cl); }
     cl.items.push(i);
   });
   const fanOffset: Record<number, number> = {};
@@ -225,9 +299,10 @@ export function renderPins(): void {
 
     const pc = PRIORITY_COLORS[comment.priority] || PRIORITY_COLORS.want;
     const off = fanOffset[idx] || 0;
+    const xPct = pos[idx].xPct;
     // 横オフセットは calc で left に加算（transform は維持されるのでホバー拡大も効く）
-    pin.style.left = off ? 'calc(' + (comment.pinX ?? 50) + '% + ' + off + 'px)' : (comment.pinX ?? 50) + '%';
-    pin.style.top = (comment.pinY ?? 0) + 'px';
+    pin.style.left = off ? 'calc(' + xPct + '% + ' + off + 'px)' : xPct + '%';
+    pin.style.top = pos[idx].yPx + 'px';
     pin.style.setProperty('--pin-color', pc.bg);
 
     pin.innerHTML = '<div class="fb-pin-icon" style="background:' + pc.bg + '">' + (idx + 1) + '</div>';
