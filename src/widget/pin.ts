@@ -391,7 +391,7 @@ export function renderPinPopup(onRender: () => void): void {
   priBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       selectedPri = (btn as HTMLElement).dataset.pri as Priority;
-      paintPri();
+      commit(); // 優先度を押した時点で即送信/保存（ワンクリック）
     });
   });
   paintPri();

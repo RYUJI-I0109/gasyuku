@@ -17,8 +17,8 @@ export function getQuoteContext(range: Range): QuoteContext {
 
 export function setupTextSelection(onRender: () => void, closePopup: () => void): void {
   document.addEventListener('mouseup', (e) => {
-    if (!state.pinMode) return; // フィードバックモードOFF中は通常のテキスト選択・コピーを邪魔しない
-    if ((e.target as HTMLElement).closest('#fb-sidebar,#fb-toggle,#fb-popup')) return;
+    // テキスト選択は FB モードに関係なく常に有効（ドラッグ選択は意図的なので邪魔にならない）
+    if ((e.target as HTMLElement).closest('#fb-sidebar,#fb-toggle,#fb-popup,#fb-name-overlay')) return;
     const sel = window.getSelection();
     const text = sel?.toString().trim();
     if (!text || !sel || sel.rangeCount === 0) return; // 名前未設定でも可（送信時に匿名で扱う）

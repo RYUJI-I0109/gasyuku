@@ -13,7 +13,8 @@ export function renderPopup(onRender: () => void, closePopup: () => void, submit
       const t = (e.target as HTMLElement).closest('[data-action]') as HTMLElement | null;
       if (!t) return;
       if (t.dataset.action === 'cancel-popup') { closePopup(); }
-      else if (t.dataset.action === 'set-popup-pri') { state.popupPriority = t.dataset.pri as Priority; onRender(); }
+      // 優先度ボタンを押した時点で、その優先度で即送信（ワンクリック）
+      else if (t.dataset.action === 'set-popup-pri') { state.popupPriority = t.dataset.pri as Priority; submitComment(state.popupPriority); }
       else if (t.dataset.action === 'submit-popup') { submitComment(state.popupPriority); }
     });
     popup.addEventListener('input', (e) => {
