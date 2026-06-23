@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>HTTPリクエストの流れ（フィードバック確認用）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ads: {
+              bg: '#FFFFFF',
+              surface: '#F8FAFC',
+              hover: '#F1F5F9',
+              border: '#E2E8F0',
+              accent: '#3B82F6',
+              'accent-light': '#2563EB',
+              text: '#1E293B',
+              muted: '#64748B',
+              dim: '#94A3B8',
+              positive: '#10B981',
+              negative: '#EF4444',
+              warning: '#F59E0B',
+            }
+          },
+          fontFamily: {
+            sans: ['"Noto Sans JP"', '"Hiragino Sans"', '"Yu Gothic UI"', '"Meiryo"', 'sans-serif'],
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-ads-bg text-slate-600 antialiased leading-relaxed border-t-4 border-ads-accent">
+  <main class="mx-auto px-5 py-10 md:py-16">
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center gap-2 bg-ads-accent/10 text-ads-accent-light px-4 py-1.5 rounded-full text-sm font-medium mb-6">
+        フィードバック確認用サンプル
+      </div>
+      <h1 class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-4">
+        <span class="text-ads-accent-light">HTTP</span>リクエストの流れ
+      </h1>
+      <p class="text-lg text-ads-muted max-w-xl mx-auto">
+        テキストを選択すると、右下のフィードバックボタンからコメントできます。
+      </p>
+    </div>
+
+    <div class="bg-ads-surface border border-ads-border rounded-2xl p-6 md:p-8 mb-6">
+      <h2 class="text-xl font-bold text-slate-900 mb-6 text-center">4ステップで理解する</h2>
+
+      <div class="space-y-4">
+        <div class="flex gap-4 items-start p-4 bg-white border border-ads-border rounded-xl">
+          <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0">1</div>
+          <div>
+            <h3 class="font-bold text-slate-900 mb-1">ブラウザがリクエストを送る</h3>
+            <p class="text-sm">ユーザーがURLを開くと、ブラウザはサーバーへ「このページをください」とHTTPリクエストを送ります。</p>
+          </div>
+        </div>
+
+        <div class="flex gap-4 items-start p-4 bg-white border border-ads-border rounded-xl">
+          <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0">2</div>
+          <div>
+            <h3 class="font-bold text-slate-900 mb-1">サーバーが処理する</h3>
+            <p class="text-sm">Webサーバーはリクエストを受け取り、必要なファイルやデータを探して応答内容を組み立てます。</p>
+          </div>
+        </div>
+
+        <div class="flex gap-4 items-start p-4 bg-white border border-ads-border rounded-xl">
+          <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0">3</div>
+          <div>
+            <h3 class="font-bold text-slate-900 mb-1">レスポンスが返る</h3>
+            <p class="text-sm">サーバーはHTTPレスポンスとしてHTMLやJSON、画像などをブラウザへ返します。ステータスコード200は成功を意味します。</p>
+          </div>
+        </div>
+
+        <div class="flex gap-4 items-start p-4 bg-white border border-ads-border rounded-xl">
+          <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0">4</div>
+          <div>
+            <h3 class="font-bold text-slate-900 mb-1">ブラウザが表示する</h3>
+            <p class="text-sm">ブラウザは受け取った内容を解釈し、画面上にページとして描画します。CSSやJavaScriptもここで適用されます。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-6">
+      <p class="text-sm text-amber-900 font-medium mb-2">このページの使い方</p>
+      <ul class="text-sm text-amber-900/90 space-y-1 list-disc list-inside">
+        <li>右下の丸いボタン → フィードバックサイドバーを開く</li>
+        <li>本文テキストをドラッグ選択 → 引用付きコメントを追加</li>
+        <li>quiz-studio 静的モードと同じ <code class="bg-white/70 px-1 rounded">feedback-widget.js</code> を読み込んでいます</li>
+      </ul>
+    </div>
+
+    <div class="text-center text-sm text-ads-dim">
+      <p>元データ: mockups/2026-06-22_feedback-widget-preview/index.html</p>
+      <p class="mt-1">この図解は「feedback-widget-preview.md」の情報を基に作成されました</p>
+    </div>
+  </main>
+
+  <footer class="max-w-3xl mx-auto px-5 pb-10 pt-6 border-t border-ads-border/30">
+    <p class="text-xs text-ads-dim text-center">本気AIドリル / フィードバックウィジェット現状確認用（2026-06-22）</p>
+  </footer>
+
+  <!-- 本気AI フィードバックウィジェット（本番: gasyuku.vercel.app） -->
+  <script src="https://gasyuku.vercel.app/widget.js" data-token="5f706f9537e8a51993161248de4c6449"></script>
+</body>
+</html>
